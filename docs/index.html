@@ -1,0 +1,75 @@
+<!DOCTYPE html><html class="default"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>array-simple-query</title><meta name="description" content="Documentation for array-simple-query"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script async src="assets/search.js" id="search-script"></script></head><body><script>document.body.classList.add(localStorage.getItem("tsd-theme") || "os")</script><header><div class="tsd-page-toolbar"><div class="container"><div class="table-wrap"><div class="table-cell" id="tsd-search" data-base="."><div class="field"><label for="tsd-search-field" class="tsd-widget search no-caption">Search</label><input type="text" id="tsd-search-field"/></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="index.html" class="title">array-simple-query</a></div><div class="table-cell" id="tsd-widgets"><div id="tsd-filter"><a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a><div class="tsd-filter-group"><div class="tsd-select" id="tsd-filter-visibility"><span class="tsd-select-label">All</span><ul class="tsd-select-list"><li data-value="public">Public</li><li data-value="protected">Public/Protected</li><li data-value="private" class="selected">All</li></ul></div> <input type="checkbox" id="tsd-filter-inherited" checked/><label class="tsd-widget" for="tsd-filter-inherited">Inherited</label><input type="checkbox" id="tsd-filter-externals" checked/><label class="tsd-widget" for="tsd-filter-externals">Externals</label></div></div><a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a></div></div></div></div><div class="tsd-page-title"><div class="container"><h1>array-simple-query </h1></div></div></header><div class="container container-main"><div class="row"><div class="col-8 col-content"><div class="tsd-panel tsd-typography"><div id="top"></div>
+
+
+
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <!-- <a href="https://github.com/">
+    <img src="helyos_logo.png" alt="Logo"  height="80">
+  </a> -->
+
+  <h3 align="center">Array Simple Query</h3>
+
+  <p align="center">
+    A convenient lib to manipulate object in JavaScript arrays.
+    <br />
+    <a href="https://cviolbarbosa.github.io/array-simple-query/"><strong>Explore the docs »</strong></a>
+    <br />
+    <br />
+    <a href="https://github.com/">View Demo</a>
+    ·
+    <a href="https://github.com/cviolbarbosa/array-simple-query/issues">Report Bug</a>
+    ·
+    <a href="https://github.com/cviolbarbosa/array-simple-query/issues">Request Feature</a>
+  </p>
+</div>
+
+
+<a href="#about-the-project" id="about-the-project" style="color: inherit; text-decoration: none;">
+  <h2>About The Project</h2>
+</a>
+<p>Convenient functions to query and change objects in a JavaScript array. It is useful to manipulate local storages mirroring a server database.</p>
+
+<a href="#list-of-features" id="list-of-features" style="color: inherit; text-decoration: none;">
+  <h3>List of features</h3>
+</a>
+<ul>
+<li>Get and object using queries.</li>
+<li>Filter array objects using nested queries.</li>
+<li>Use queries to delete and update objects inside the array.</li>
+</ul>
+
+<a href="#getting-started" id="getting-started" style="color: inherit; text-decoration: none;">
+  <h2>Getting Started</h2>
+</a>
+
+<a href="#installation" id="installation" style="color: inherit; text-decoration: none;">
+  <h3>Installation</h3>
+</a>
+<pre><code class="language-shell"><span class="hl-1">$ npm i array-simple-query  --save</span>
+</code></pre>
+
+<a href="#usage" id="usage" style="color: inherit; text-decoration: none;">
+  <h3>Usage</h3>
+</a>
+<pre><code class="language-js"><br/><span class="hl-8">import</span><span class="hl-1"> </span><span class="hl-0">*</span><span class="hl-1"> </span><span class="hl-8">as</span><span class="hl-1"> </span><span class="hl-4">ASQ</span><span class="hl-1"> </span><span class="hl-8">from</span><span class="hl-1"> </span><span class="hl-3">&#39;array-simple-query&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">const</span><span class="hl-1"> </span><span class="hl-2">books</span><span class="hl-1"> = [{ </span><span class="hl-3">&#39;id&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">1</span><span class="hl-1">, </span><span class="hl-3">&#39;title&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-3">&#39;English course&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;author&#39;</span><span class="hl-4">:</span><span class="hl-1"> {</span><span class="hl-4">first_name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Joe&#39;</span><span class="hl-1">, </span><span class="hl-4">last_name:</span><span class="hl-3">&#39;Doe&#39;</span><span class="hl-1">},       </span><span class="hl-3">&#39;year&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">2009</span><span class="hl-1"> },</span><br/><span class="hl-1">            { </span><span class="hl-3">&#39;id&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">2</span><span class="hl-1">, </span><span class="hl-3">&#39;title&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-3">&#39;Italian course&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;author&#39;</span><span class="hl-4">:</span><span class="hl-1"> {</span><span class="hl-4">first_name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Pinco&#39;</span><span class="hl-1">, </span><span class="hl-4">last_name:</span><span class="hl-3">&#39;Pallino&#39;</span><span class="hl-1">}, </span><span class="hl-3">&#39;year&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">2010</span><span class="hl-1"> },</span><br/><span class="hl-1">            { </span><span class="hl-3">&#39;id&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">3</span><span class="hl-1">, </span><span class="hl-3">&#39;title&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-3">&#39;German course&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;author&#39;</span><span class="hl-4">:</span><span class="hl-1"> {</span><span class="hl-4">first_name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Max&#39;</span><span class="hl-1">, </span><span class="hl-4">last_name:</span><span class="hl-3">&#39;Musterman&#39;</span><span class="hl-1">}, </span><span class="hl-3">&#39;year&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">2009</span><span class="hl-1"> },</span><br/><span class="hl-1">            { </span><span class="hl-3">&#39;id&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">4</span><span class="hl-1">, </span><span class="hl-3">&#39;title&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-3">&#39;Portugues course&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;author&#39;</span><span class="hl-4">:</span><span class="hl-1"> {</span><span class="hl-4">first_name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Ciclano&#39;</span><span class="hl-1">, </span><span class="hl-4">last_name:</span><span class="hl-3">&#39;Silva&#39;</span><span class="hl-1">}, </span><span class="hl-3">&#39;year&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">2010</span><span class="hl-1"> }];</span><br/><br/><span class="hl-7">// simple query</span><br/><span class="hl-0">const</span><span class="hl-1"> </span><span class="hl-2">englishBook</span><span class="hl-1"> =  </span><span class="hl-2">ASQ</span><span class="hl-1">.</span><span class="hl-6">getObject</span><span class="hl-1">(</span><span class="hl-4">books</span><span class="hl-1">, {</span><span class="hl-3">&#39;title&#39;</span><span class="hl-4">:</span><span class="hl-3">&#39;English course&#39;</span><span class="hl-1">});</span><br/><br/><span class="hl-7">//nested query</span><br/><span class="hl-0">const</span><span class="hl-1"> </span><span class="hl-2">pallinosBook</span><span class="hl-1"> = </span><span class="hl-2">ASQ</span><span class="hl-1">.</span><span class="hl-6">getObject</span><span class="hl-1">(</span><span class="hl-4">books</span><span class="hl-1">, {</span><span class="hl-3">&#39;author.last_name&#39;</span><span class="hl-4">:</span><span class="hl-3">&#39;Pallino&#39;</span><span class="hl-1">});</span><br/><br/><span class="hl-7">//negation</span><br/><span class="hl-0">const</span><span class="hl-1"> </span><span class="hl-2">nonGermanBooks</span><span class="hl-1"> = </span><span class="hl-2">ASQ</span><span class="hl-1">.</span><span class="hl-6">filterObjects</span><span class="hl-1">(</span><span class="hl-4">books</span><span class="hl-1">,{</span><span class="hl-3">&#39;!title&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-3">&#39;German course&#39;</span><span class="hl-1">});</span><br/><br/><span class="hl-7">//deletion</span><br/><span class="hl-0">const</span><span class="hl-1"> </span><span class="hl-2">positionOfDeletedElements</span><span class="hl-1"> = </span><span class="hl-2">ASQ</span><span class="hl-1">.</span><span class="hl-6">deleteObjects</span><span class="hl-1">(</span><span class="hl-4">books</span><span class="hl-1">, {</span><span class="hl-3">&#39;year&#39;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-5">2009</span><span class="hl-1">});</span>
+</code></pre>
+
+<a href="#contributing" id="contributing" style="color: inherit; text-decoration: none;">
+  <h3>Contributing</h3>
+</a>
+<p>This package is in development. </p>
+
+<a href="#authors" id="authors" style="color: inherit; text-decoration: none;">
+  <h3>Authors</h3>
+</a>
+<ul>
+<li>Carlos E. Viol Barbosa</li>
+</ul>
+
+<a href="#license" id="license" style="color: inherit; text-decoration: none;">
+  <h3>License</h3>
+</a>
+<p>This project is licensed under the MIT License</p>
+</div></div><div class="col-4 col-menu menu-sticky-wrap menu-highlight"><nav class="tsd-navigation primary"><ul><li class="current"><a href="modules.html">Exports</a></li></ul></nav><nav class="tsd-navigation secondary menu-sticky"><ul><li class="tsd-kind-function"><a href="modules.html#deleteByArrayIndexes" class="tsd-kind-icon">delete<wbr/>By<wbr/>Array<wbr/>Indexes</a></li><li class="tsd-kind-function"><a href="modules.html#deleteById" class="tsd-kind-icon">delete<wbr/>By<wbr/>Id</a></li><li class="tsd-kind-function"><a href="modules.html#deleteByIdInNewArray" class="tsd-kind-icon">delete<wbr/>By<wbr/>Id<wbr/>In<wbr/>New<wbr/>Array</a></li><li class="tsd-kind-function"><a href="modules.html#deleteObjects" class="tsd-kind-icon">delete<wbr/>Objects</a></li><li class="tsd-kind-function"><a href="modules.html#extractIds" class="tsd-kind-icon">extract<wbr/>Ids</a></li><li class="tsd-kind-function"><a href="modules.html#extractNestedIds" class="tsd-kind-icon">extract<wbr/>Nested<wbr/>Ids</a></li><li class="tsd-kind-function"><a href="modules.html#filterObjects" class="tsd-kind-icon">filter<wbr/>Objects</a></li><li class="tsd-kind-function"><a href="modules.html#getObject" class="tsd-kind-icon">get<wbr/>Object</a></li><li class="tsd-kind-function"><a href="modules.html#getObjectbyIds" class="tsd-kind-icon">get<wbr/>Objectby<wbr/>Ids</a></li><li class="tsd-kind-function"><a href="modules.html#updateObject" class="tsd-kind-icon">update<wbr/>Object</a></li></ul></nav></div></div></div><footer class="with-border-bottom"><div class="container"><h2>Settings</h2><p>Theme <select id="theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></p></div></footer><div class="container tsd-generator"><p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></div><div class="overlay"></div><script src="assets/main.js"></script></body></html>

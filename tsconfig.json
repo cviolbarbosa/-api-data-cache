@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+      "allowSyntheticDefaultImports": false,
+      "strictPropertyInitialization": false,
+      "noImplicitAny": false,
+      "alwaysStrict": false,
+      "lib": ["es5","es6", "dom", "ES2017"],
+      "module": "es2020",
+      "moduleResolution": "node",
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "sourceMap": false,
+      "strict": false,
+      "target": "es6",
+      "declaration": true
+    },
+    "include": [
+      "src/**/*",
+      "types"
+    ]
+  }

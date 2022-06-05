@@ -1,0 +1,6 @@
+{
+    "name": "array-simple-query",
+    "entryPoints": [".\\src\\index.ts"],
+    "out": "docs",
+    "excludePrivate": true
+  }
