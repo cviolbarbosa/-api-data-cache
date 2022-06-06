@@ -6,66 +6,124 @@
 <br />
 <div align="center">
   <!-- <a href="https://github.com/">
-    <img src="helyos_logo.png" alt="Logo"  height="80">
+    <img src="" alt="Logo"  height="80">
   </a> -->
 
-  <h3 align="center">Array Simple Query</h3>
+  <h3 align="center">API DATA CACHE</h3>
 
   <p align="center">
-    A convenient lib to manipulate object in JavaScript arrays.
+    Reduce data transfer from servers by storing structured data locally.
     <br />
-    <a href="https://cviolbarbosa.github.io/array-simple-query/"><strong>Explore the docs »</strong></a>
+    <a href="https://cviolbarbosa.github.io/api-data-cache/"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://github.com/">View Demo</a>
     ·
-    <a href="https://github.com/cviolbarbosa/array-simple-query/issues">Report Bug</a>
+    <a href="https://github.com/cviolbarbosa/api-data-cache/issues">Report Bug</a>
     ·
-    <a href="https://github.com/cviolbarbosa/array-simple-query/issues">Request Feature</a>
+    <a href="https://github.com/cviolbarbosa/api-data-cache/issues">Request Feature</a>
   </p>
 </div>
 
 ## About The Project
 
-Convenient functions to query and change objects in a JavaScript array. It is useful to manipulate local storages mirroring a server database.
+This project originated from the necessity of reducing the data trafic and serialization time of large object instances from backend to frontend. The api-data-cache decreases considerably lag times improving the responsivines and user experience. The implementation was inspired in the Redux; each data object is accessble to the application from a single immutable store, the data cache. 
+
+The package is in principle designed to work with the HtttpClient from Angular 2+, but it can be easily adapted to other platforms (see below).
 
 
 ### List of features
-*   Get and object using queries.
-*   Filter array objects using nested queries.
-*   Use queries to delete and update objects inside the array.
+*   A single class implements all CRUDE methods: CREATE, LIST, GET, UPDATE, DELETE.
+*   Long period cache for `get` operations and short period cache for `list` operations.
+*   Advanced list method to retrieved fitered list of objects.
 
 ## Getting Started
 
 ### Installation
 
 ```shell 
-$ npm i array-simple-query  --save
+$ npm i api-data-cache  --save
 ```
 
 ### Usage
 
+A common scenario is when the app has a `list view` and a `detail view`. In the list view many objects are displayed, and only the most important properties are loaded. In the detail view, a single object is shown with all properties and nested relationships. To take maximum advantage of the api-data-cache, the backend should use shallow or partial serializers in listing operations, and fully-nested serializer only in detail views.
+
+As an example, let's consider an app that list books using the following API:
+
+* GET /book/      => retrieve book list.
+* POST /book/     => create a new book and return its id.
+* GET /book/:id   => retrieve the book of a given id.
+* PATCH /book/:id => update the book of a given id.
+
+#### book.service.ts
 ```js 
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import {BookModel} from './app.models'
+import {ApiDataCacheService} from 'api-data-cache';
 
-import * as ASQ from 'array-simple-query';
+const my_edit_create_serializer = (data) => data;
 
-const books = [{ 'id': 1, 'title': 'English course', 'author': {first_name: 'Joe', last_name:'Doe'},       'year': 2009 },
-            { 'id': 2, 'title': 'Italian course', 'author': {first_name: 'Pinco', last_name:'Pallino'}, 'year': 2010 },
-            { 'id': 3, 'title': 'German course', 'author': {first_name: 'Max', last_name:'Musterman'}, 'year': 2009 },
-            { 'id': 4, 'title': 'Portugues course', 'author': {first_name: 'Ciclano', last_name:'Silva'}, 'year': 2010 }];
+@Injectable({
+  providedIn: 'root'
+})
+export class BookService extends ApiDataCacheService <BookModel> {
 
-// simple query
-const englishBook =  ASQ.getObject(books, {'title':'English course'});
-
-//nested query
-const pallinosBook = ASQ.getObject(books, {'author.last_name':'Pallino'});
-
-//negation
-const nonGermanBooks = ASQ.filterObjects(books,{'!title': 'German course'});
-
-//deletion
-const positionOfDeletedElements = ASQ.deleteObjects(books, {'year': 2009});
+  constructor(public http: HttpClient) {
+      super(http);
+      this.url = '/book/'; 
+      this.maxCachedListAge = 2;   // 0  - 5 seconds       
+      this.maxCachedGETAge = 300;  // 30 - 3600 seconds
+      this.serializer = my_edit_create_serializer;  // optional
+  }
 ```
+
+
+#### book.component.ts
+```js
+import { Component } from '@angular/core';
+import { BookService } from '@ngx-formly/core';
+
+@Component({
+  selector: 'app-root',
+  template: `
+          <div style="display: flex" >
+                <div *ngFor="let book in books" (click)="selectBook(book.id)" style="border: solid">
+                      {{books | json}}
+                </div>
+                <div style="border: solid">
+                  {{selectedBook | json}} 
+                </div>
+          </div>
+  `,
+})
+export class AppComponent {
+  public books: BookModel[];
+  public selectedBook = BookModel;
+
+  constructor(bookService: BookService) {
+  // results are cached for 2 seconds, avoiding needless outbounding requests to the server.
+    	bookService.list().subscribe(r => this.books = r);
+  }
+
+  selectBook(id: string | number){
+  // results are cached for 300 seconds, avoiding needless outbounding requests to server when browsing through items.
+      bookService.get(id).subscribe(r => this.selectedBook = r);
+  }
+
+  updateBook(book:Partial<BookModel>){
+  // dispatch the patch request and update instance in cache.
+      bookService.edit(book).subscribe();
+  }
+
+  createBook(book:Partial<BookModel>){
+  // dispatch the patch request and update instance in cache.
+      bookService.create(book).subscribe();
+  }
+
+```
+
 
 
 ### Contributing

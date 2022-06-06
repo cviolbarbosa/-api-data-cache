@@ -1,7 +1,7 @@
 {
   "name": "api-data-cache",
   "version": "0.0.10",
-  "description": "A convenient lib to manipulate objects in JavaScript arrays.",
+  "description": "Reduce data transfer and serialization time in servers by storing structured data locally.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
