@@ -18,14 +18,15 @@ export interface HttpClientProxy {
 export class ApiDataCacheService <T> {
   public url: string;
   public started: boolean = false;
-  
+  public trailingSlash: boolean = false;
+
   // Function to serialize the instance data before sending to server
   public serializer: (data) => { }; 
 
   // Data cache properties
-  public cachedResponses = {};
-  public cachedPUT = {};
-  public dataCached: T[] = [];
+  private cachedResponses = {};
+  private cachedPUT = {};
+  private dataCached: T[] = [];
   public cachedVersionInfo: { [id: string]: any[]} = {};
   private httpProxy: HttpClientProxy;
 
@@ -42,7 +43,7 @@ export class ApiDataCacheService <T> {
     }
 
   // suggar around $http
-  fetch<T>(options: FetchOptions): Observable <any> {     
+  private fetch<T>(options: FetchOptions): Observable <any> {     
     const method = options.method.toLowerCase();
     switch (method) {
       case 'get':
@@ -166,14 +167,14 @@ export class ApiDataCacheService <T> {
       }
     }
 
-  public cacheResponse(url, postData, response, cache) {
+    private cacheResponse(url, postData, response, cache) {
     const key = hashCode(url + JSON.stringify(postData));
     cache[key] = { response, timestamp: new Date() };
 
     return cache;
   }
 
-  public getCachedResponse(url, postData, cache, age) {
+  private getCachedResponse(url, postData, cache, age) {
     this.deleteOld(cache, age);
     const key = hashCode(url + JSON.stringify(postData));
     if (cache[key]) {
@@ -343,7 +344,8 @@ export class ApiDataCacheService <T> {
   get(id: string | number, reload: boolean = false, alternativeUrl = ''): Observable<T>  {
     let url: string;
       if (alternativeUrl === '') {
-          url = `${this.url}${id}/`;
+          url = this.trailingSlash ? `${this.url}${id}/`: `${this.url}${id}`;
+
       } else {
           url = `${alternativeUrl}`;
       }
@@ -421,7 +423,7 @@ export class ApiDataCacheService <T> {
     edit(instance: Partial<T>, alternativeUrl = '') {
       let url: string;
       if (alternativeUrl === '') {
-          url = `${this.url}${instance['id']}/`;
+          url = this.trailingSlash ? `${this.url}${instance['id']}/`: `${this.url}${instance['id']}`;
       } else {
           url = `${alternativeUrl}`;
       }
@@ -463,8 +465,10 @@ export class ApiDataCacheService <T> {
           ID = id['id'];
       }
 
+      const url = this.trailingSlash ? `${this.url}${ID}/`: `${this.url}${ID}`;
+
       return this.fetch({
-          url: `${this.url}${ID}/`,
+          url: url,
           method: 'delete',
           data: {}
       })

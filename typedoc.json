@@ -1,5 +1,5 @@
 {
-    "name": "array-simple-query",
+    "name": "api-data-cache",
     "entryPoints": [".\\src\\index.ts"],
     "out": "docs",
     "excludePrivate": true
