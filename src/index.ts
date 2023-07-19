@@ -17,8 +17,10 @@ export interface HttpClientProxy {
 
 export class ApiDataCacheService <T> {
   public url: string;
+  public advancedListEndpoint: string = '';
   public started: boolean = false;
   public trailingSlash: boolean = false;
+  public preventListMutation : 'simpleRecursiveClone' | 'jsonDeepCopy'| 'cloneDeep'| 'none' = 'simpleRecursiveClone';
 
   // Function to serialize the instance data before sending to server
   public serializer: (data) => { }; 
@@ -184,13 +186,42 @@ export class ApiDataCacheService <T> {
     return null;
   }
 
+  private cloneObj(obj:any): any{
+
+    function simpleRecursiveClone(obj) {
+      return Object.keys(obj).reduce((v, d) => Object.assign(v, {
+        [d]: (obj[d].constructor === Object) ? simpleRecursiveClone(obj[d]) : obj[d]
+      }), {});
+    }
+
+    switch (this.preventListMutation) {
+      case 'simpleRecursiveClone':
+        return simpleRecursiveClone(obj);
+      case 'cloneDeep':
+        return lodash.cloneDeep(obj);
+      case 'jsonDeepCopy':
+          return JSON.parse(JSON.stringify(obj));
+      default:
+        return obj
+    }
+  }
+
 
 
   private get_list_url(qsearch = '', pageRequest: DataPageRequest | null = null,  alternativeUrl='') {
     let url: string =  alternativeUrl ? alternativeUrl : this.url;
     let _preq: DataPageRequest = pageRequest ? pageRequest :  new DataPageRequest(); 
+    let queryString  = '';
     qsearch = qsearch.trim();
-    return `${url}/?limit=${_preq.itemsPerPage}&page=${_preq.page}&orderBy=${_preq.orderBy}&search=${qsearch}`;
+
+    if (_preq.itemsPerPage) { queryString = queryString + `limit=${_preq.itemsPerPage}&`; }
+    if (_preq.page) { queryString = queryString + `page=${_preq.page}&`; }
+    if (_preq.orderBy) { queryString = queryString + `orderBy=${_preq.orderBy}&`; }
+    if (qsearch) { queryString = queryString + `search=${qsearch}&`; }
+    if (queryString)
+      return `${url}/?${queryString}`;
+    else
+      return url;
 
   }
 // --------------------------------------------------------------------------
@@ -246,29 +277,32 @@ export class ApiDataCacheService <T> {
  * // Filtering
  *  let bakersList = [];
  *  const options = { filter: {'profession': 'Baker'}};
- *  service.advancedList('', null, options)
+ *  service.advancedList('',  options)
  *  .subscribe( r => bakersList = r.list);
  * 
  * // Inclusion of instances
  *  let bakersListExtended = [];
  *  const options = { filter: {'profession': 'Baker'}, includeIds: [3, 4, 5]};
- *  service.advancedList('', null, options)
+ *  service.advancedList('',  options)
  *  .subscribe( r => bakersListExtended = r.list);
  * 
  *  // Fully-nested objects
  *  let detailedBakersList = [];
  *  const options = { filter: {'profession': 'Baker'}, fullyNested: true};
- *  service.advancedList('', null, options)
+ *  service.advancedList('',  options)
  *  .subscribe( r => detailedBakersList = r.list);
  * 
  *
  */
-  advancedList(qsearch = '', pageRequest: DataPageRequest | null = null,  alternativeUrl='', options: AdvancedListOptions=null): Subject<DataListResponse <T>> {
-        const url = this.get_list_url(qsearch, pageRequest, alternativeUrl);
-
+  advancedList(qsearch = '', pageRequest: DataPageRequest | null = null,   options: AdvancedListOptions=null, alternativeUrl=''): Subject<DataListResponse <T>> {
+        let advancedListEndPoint = alternativeUrl? alternativeUrl: this.advancedListEndpoint;
         let _opt = options ?  options : new AdvancedListOptions();
-        let cachedItems = ASQ.filterObjects(this.dataCached, { _cacheOutdated: false });
-        const cachedItemsIds = cachedItems.map(f => f.id);
+
+        
+        const url = this.get_list_url(qsearch, pageRequest, advancedListEndPoint);
+
+        let preCachedItems = ASQ.filterObjects(this.dataCached, { _cacheOutdated: false });
+        const cachedItemsIds = preCachedItems.map(f => f.id);
 
         qsearch = qsearch.trim();
         if (qsearch && qsearch.length > 1) {
@@ -309,20 +343,26 @@ export class ApiDataCacheService <T> {
 
         const responseSubject =  new Subject <DataListResponse<T>> ();
         this.fetch({
-            method: 'post',
-            url,
-            data: postData
-        })
-        .pipe(
-        map((rv: DataListResponse<T>) => {
-            // CACHE REQUESTED DATA - LONG PERIOD
-            const freshCachedItems = this.updateItemsMetaCache(rv.list);
-            return {...rv, list: freshCachedItems};
-        })
-        ).subscribe(r => {
-            responseSubject.next(r);
-            responseSubject.complete();
-        });
+                  method: 'post',
+                  url,
+                  data: postData
+              })
+              .pipe(
+              tap((rv: DataListResponse<T>) => {
+                  // CACHE REQUESTED DATA - LONG PERIOD
+                  const freshCachedItems = this.updateItemsMetaCache(rv.list);
+              }),
+              map((rv: DataListResponse<T>) => {
+                // CACHE REQUESTED DATA - LONG PERIOD
+                if (rv.listIds) {
+                  rv.list = this.cloneObj(ASQ.getObjectbyIds(this.dataCached, rv.listIds));
+                }
+                return rv;
+              })
+              ).subscribe(r => {
+                  responseSubject.next(r);
+                  responseSubject.complete();
+              });
 
         // CACHE RESPONSE - SHORT PERIOD
         this.cacheResponse(url, postData, responseSubject, this.cachedResponses);

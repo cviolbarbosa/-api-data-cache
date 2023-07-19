@@ -35,7 +35,7 @@ This library is in principle designed to work with the HtttpClient from Angular 
 ### List of features
 *   A single class to extend services containing CRUDE methods: CREATE, LIST, GET, UPDATE, DELETE.
 *   Long period cache for `get` operations and short period cache for `list` operations.
-*   Advanced list method to retrieved filtered list of objects.
+*   Advanced list method to retrieve filtered list of objects.
 *   Special options for data serialization in update and create operations.
 
 ## Getting Started

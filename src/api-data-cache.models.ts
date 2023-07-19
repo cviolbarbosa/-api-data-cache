@@ -36,6 +36,7 @@ export interface FetchOptions {
 
 
 export interface DataListResponse<T> {
+  listIds?: number[];
   list: T[];
   page_request: DataPageRequest;
 }
