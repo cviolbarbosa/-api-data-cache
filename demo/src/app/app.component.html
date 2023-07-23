@@ -1,0 +1,78 @@
+
+  <div style="text-align:center" class="content">
+    <h1>
+      Welcome to API-Data-Cache demo!
+    </h1>
+    <span style="display: block">Click in any line of the table to load the data! </span>
+  </div>
+  <button (click)="resetCounters()"> RESET TRANSFER  </button>
+
+
+<div style="display: flex">
+
+  <div class="card">
+    <div class="card-header">
+        <h2> Cache disabled </h2> <h3 style="color: green">Transfer: {{dataCounter1 | number: '1.2-2' }} KB</h3>
+    </div>
+
+    <button (click)="list('',-1)"> << previous page  </button>
+    <button (click)="list('',1)">  next page >> </button>
+  
+    <table>
+      <tr>
+          <th>ID</th> <th>Name</th> <th>Start</th>  <th>End</th>
+      </tr>
+      <tr *ngFor="let item of itemList" (click)="get(item.id)">
+          <td>{{item.id}}</td>
+          <td>{{item.name}}</td>
+          <td>{{item.start_at | date: 'M/d/yy, H:mm'}}</td>
+          <td>{{item.end_at | date: 'M/d/yy, H:mm'}}</td>
+      </tr>      
+    </table>
+
+    <div *ngIf="selectedItem">
+      <h3>Data from {{selectedItem.name}}:</h3>
+      <textarea style="width: 100%" lines="4">{{selectedItem.data}}</textarea>
+    </div>
+
+
+  </div>
+    
+  <div class="card">
+
+    <div class="card-header">
+      <h2> API data cache </h2> 
+      <div>
+        <h3 style="color: green; margin: 0px">Transfer: {{dataCounter2 | number: '1.2-2' }} KB</h3>
+        <span> Cache TTL: 100 seconds</span> <br>
+        <span> Pagination TTL: 3 seconds</span>
+      </div>
+    </div>
+
+    <button (click)="list('',-1)"> << previous page  </button>
+    <button (click)="list('',1)">  next page >> </button>
+    <input  [(ngModel)]="useAdvancedList" type="checkbox"> advancedList()
+    
+
+    <table>
+      <tr>
+          <th>ID</th> <th>Name</th> <th>Start</th>  <th>End</th>
+      </tr>
+      <tr *ngFor="let item of itemList2" (click)="get(item.id)">
+          <td>{{item.id}}</td>
+          <td>{{item.name}}</td>
+          <td>{{item.start_at | date: 'M/d/yy, H:mm'}}</td>
+          <td>{{item.end_at | date: 'M/d/yy, H:mm'}}</td>
+      </tr>      
+    </table>
+
+    <div *ngIf="selectedItem2">
+      <h3>Data from {{selectedItem2.name}}:</h3>
+      <textarea style="width: 100%" lines="4">{{selectedItem2.data}}</textarea>
+    </div>
+    
+
+
+  </div>
+
+</div>

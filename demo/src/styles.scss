@@ -1,0 +1,52 @@
+/* You can add global styles to this file, and also import other style files */
+body{
+    background-color: lightgray;
+}
+table {
+    border-collapse: collapse;
+    font-size: small;
+    width: 100%;
+}
+
+th, td {
+    border: 1px solid black;
+    padding: 6px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+tr {
+    cursor: pointer;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;;
+}
+
+.card {
+    width: 100%;
+    background-color: white;
+    padding: 0px 10px 10px;
+    border: gray solid 0.5px;
+    margin: 3px;
+}
+
+.row {
+    display: flex;
+    width: 100%;
+}
+
+.card-header {
+    display: flex; 
+    justify-content: space-between;
+
+    h3 { margin: 0px;}
+
+    span {font-size: small; }
+}
+
+
+    
