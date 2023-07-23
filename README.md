@@ -9,7 +9,7 @@
     <img src="" alt="Logo"  height="80">
   </a> -->
 
-  <h3 align="center">API DATA CACHE - WIP</h3>
+  <h3 align="center">API DATA CACHE </h3>
 
   <p align="center">
     Reduce data transfer from servers by storing structured data locally.
