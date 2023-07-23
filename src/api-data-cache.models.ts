@@ -32,6 +32,7 @@ export interface FetchOptions {
   url: string;
   data?: any;
   method: 'GET'| 'PUT' | 'PATCH' | 'DELETE' | 'POST' | 'get' | 'put' | 'patch' | 'delete' | 'post';
+  headers?: any;
 }
 
 
@@ -60,10 +61,10 @@ export class DataPageRequest {
 }
 
 export class AdvancedListOptions {
-  filter: any = {};
-  searchScope: 'local' | 'server' | 'local+server' = 'server';
+  filter?: any = {};
+  searchScope?: 'local' | 'server' | 'local+server' = 'server';
   includeIds: number[] = [];
-  fullNesting: boolean = false;
+  fullNesting?: boolean = false;
 }
 
 

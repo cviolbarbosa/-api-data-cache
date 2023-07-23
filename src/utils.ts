@@ -6,6 +6,16 @@ export const hashCode = (str) => {
 };
 
 
+export const urlJoin = (...args) =>
+  args
+    .join('/')
+    .replace(/[\/]+/g, '/')
+    .replace(/^(.+):\//, '$1://')
+    .replace(/^file:/, 'file:/')
+    .replace(/\/(\?|&|#[^!])/g, '$1')
+    .replace(/\?/g, '&')
+    .replace('&', '?');
+
 export function slugify(text) {
   return text.toString().toLowerCase()
       .replace(/\s+/g, '_')           // Replace spaces with -

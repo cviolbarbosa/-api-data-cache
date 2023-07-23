@@ -2,7 +2,7 @@ import { AdvancedListOptions, DataCreationResponse, DataListResponse, DataModel,
 import { isObservable, map, Observable, of, Subject, tap } from 'rxjs';
 import * as ASQ from 'array-simple-query';
 import * as lodash from 'lodash';
-import { hashCode, searchDeep } from './utils';
+import { hashCode, searchDeep, urlJoin } from './utils';
 
 export * from './api-data-cache.models';
 
@@ -14,52 +14,101 @@ export interface HttpClientProxy {
     request: (...params) => Observable <any>; 
 }
 
+/**
+ * Customization of data service.
+ * @param {number} serverResponseTTL - The cached service response time to live. It is only applied for listing, to improve pagination operations. (default 3 seconds)
+ * @param {string} advancedListEndpoint - Additional endpoint for filtering operations used in the `advancedList` method.
+ * @param {string} mutationPreventionStrategy - Strategy to avoid mutation of the cache data: 'simpleRecursiveClone' | 'jsonDeepCopy'| 'cloneDeep'| 'none'
+ * @param {trailingSlash} boolean - Adds a back slash at the end of the request url.
+ */
+export class DataCacheOptions {
+  advancedListEndpoint?: string = '';
+  mutationPreventionStrategy?: 'none' | 'simpleRecursiveClone' | 'jsonDeepCopy'| 'cloneDeep' = 'simpleRecursiveClone';
+  trailingSlash?: boolean = false;
+  serverResponseTTL?: number = 3;
+}
+
 
 export class ApiDataCacheService <T> {
-  public url: string;
-  public advancedListEndpoint: string = '';
-  public started: boolean = false;
-  public trailingSlash: boolean = false;
-  public preventListMutation : 'simpleRecursiveClone' | 'jsonDeepCopy'| 'cloneDeep'| 'none' = 'simpleRecursiveClone';
 
-  // Function to serialize the instance data before sending to server
+  /**
+   * Is the data service initiated?
+   */
+  public started: boolean = false;
+
+  /**
+   * Disable new updates to be cached.
+  */
+  public disabledCache = false;
+
+  /**
+   * Set additional headers to all requests of the service.
+  */
+  public requestHeaders = {};
+
+
+  /**
+   * By setting the parameter `setFullRecordOnGet` to `true`, 
+   * the retrieved record using the `get()` method will be automatically marked as `full`.
+   * In this context, 'full' means that the record possesses all fields, including any required nested fields.
+   * On the other hand, if `setFullRecordOnGet` is set to `false`, the retrieved record will not be marked as 'full'.
+   * In this case, you need to add a calculated field `_full: true` to the fully serialized records on the server-side.
+   * 
+  */
+  public setFullRecordOnGet = true;
+
+  /**
+   * Function to serialize the instance data before sending to serve in the `edit()` and `create()` methods.
+   */
   public serializer: (data) => { }; 
 
   // Data cache properties
+  private opt = new DataCacheOptions();
   private cachedResponses = {};
   private cachedPUT = {};
   private dataCached: T[] = [];
-  public cachedVersionInfo: { [id: string]: any[]} = {};
   private httpProxy: HttpClientProxy;
-
-//   Expiration for Response Caching
-  public maxCachedListAge = 5; // seconds
-
-// Expiration for Data Caching
-  public maxCachedGetAge = 100; // seconds    
+  public cachedVersionInfo: { [id: string]: any[]} = {};
 
 
+  /**
+   * Create a Cached Data Service.
+   * @param {HttpClientProxy} httpProxy - A class implementing the Angular HtttpClient methods `get`,`patch`,`post`, `delete` and `request`.
+   * @param {string} url - The base CRUD url.
+   * @param {number} cacheTTL - The data cache time to live. (default 100 seconds, minimum 10 seconds)
+   * @param {DataCacheOptions} options - Additional endpoint for filtering operations used in the `advancedList` method.
+   */
+  constructor(httpProxy: any, public url: string, private cacheTTL = 100, options: DataCacheOptions = {} ) {   // Expiration for Data Caching
+        this.httpProxy = httpProxy as HttpClientProxy;
+        this.url = url;
+        this.opt = {...this.opt, ...options}
+        this.setCacheWatcher();
 
-  constructor(http: any) {   // Expiration for Data Caching
-        this.httpProxy = http as HttpClientProxy;
-    }
+  }
+
+  private setCacheWatcher(){
+    let cacheMonitorPeriod = this.cacheTTL/4;
+    if (cacheMonitorPeriod < 10) { cacheMonitorPeriod = 10};
+    setInterval(() => this.markExpiredItemsOutdated(), cacheMonitorPeriod);
+  }
 
   // suggar around $http
   private fetch<T>(options: FetchOptions): Observable <any> {     
     const method = options.method.toLowerCase();
+
     switch (method) {
       case 'get':
-        return this.httpProxy.get(`${options.url}`);
+        return this.httpProxy.get(`${options.url}`, this.requestHeaders);
       case 'put':
-        return this.httpProxy.put(`${options.url}`, options.data);
+        return this.httpProxy.put(`${options.url}`, options.data, this.requestHeaders);
       case 'patch':
-        return this.httpProxy.patch(`${options.url}`, options.data);
+        return this.httpProxy.patch(`${options.url}`, options.data, this.requestHeaders);
       case 'post':
-        return this.httpProxy.post(`${options.url}`, options.data);
+        return this.httpProxy.post(`${options.url}`, options.data, this.requestHeaders);
       case 'delete':
         return this.httpProxy.request('delete', `${options.url}`, { body: options.data });
       default:
-        return this.httpProxy.get(`${options.url}`);;
+        return this.httpProxy.get(`${options.url}`, this.requestHeaders);;
     }
   
   }
@@ -69,32 +118,67 @@ export class ApiDataCacheService <T> {
     // Methods to Cache the Entity Data
     // --------------------------------------------------------------------------
 
-    initiateService() { }
+    initiateService() { 
+      this.started = true;
+    }
 
+   /**
+   * Mark all cached data as outdated
+   */
     markAllOutdated() {
         this.dataCached.forEach(d => d['_cacheOutdated'] = true);
     }
 
+   /**
+   * Mark cached record as outdated
+   * @param {number} id - Instance id to be marked as outdated.
+   */
     markOutdated(id: number | string) {
         const itemCached = ASQ.getObject(this.dataCached, { id: id });
         itemCached['_cacheOutdated'] = true;
     }
 
-    updateItemMetaCache(item, retrievalTimestamp: number | null = null): any {
+    private markExpiredItemsOutdated() {
+      const now = new Date();
+      for (let index = 0; index < this.dataCached.length; index++) {
+        const itemCached = this.dataCached[index];
+        if ((now.getTime() - itemCached['_cacheUpdatedAt']) / 1000 > this.cacheTTL) {
+          itemCached['_cacheOutdated'] = true;
+        } else {
+          break;
+        }
+      }
+    }
+
+
+   /**
+   * Free memory by deleting outdated instances from the cache.
+   */
+    deleteOutdatedCache() {
+      ASQ.deleteObjects(this.dataCached, {_cacheOutdate:true});
+    }
+
+ /**
+ * Updates an item in the cached. The original data is actually deleted and a new object is added at the end of the array.
+ * In this way, the data cache becomes ordered by `_cacheUpdatedAt`, facilitating the expiration of old cache.
+ *
+ * @param item Object
+ * @param retrievalTimestamp Date time when the data was requested
+ *
+ * @return The cached item object from data cache array.
+ */
+    private updateItemMetaCache(item, retrievalTimestamp: number | null = null): any {
         this.cachedVersionInfo[item.id] = [];
         if (typeof (item) !== 'object') { return null; }
+    
+        const itemInputClone = lodash.cloneDeep(item);
         const arrayCache = this.dataCached;
 
-        // Add stamp to urls to force browser pull the new img from server
-        for (const attribute in item) {
-            if (typeof(item[attribute]) === 'string' && item[attribute].startsWith('/api/')) {
-                item[attribute] += `?${new Date().getTime()}`;
-            }
-        }
-
-        const itemInputClone = lodash.cloneDeep(item);
+        if (this.disabledCache) { return itemInputClone;}
+        
         let itemCached = ASQ.getObject(arrayCache, { id: item.id });
         if (itemCached) {
+        // Item already exists
             if (retrievalTimestamp) {
                     if (itemCached._cacheUpdatedAt > retrievalTimestamp) {
                         return itemCached;
@@ -102,28 +186,28 @@ export class ApiDataCacheService <T> {
                         item._serv_timestamp = retrievalTimestamp;
                     }
             }
-            itemInputClone._cacheUpdatedAt = new Date().getTime();
 
-            if (itemInputClone.full === true && itemCached.full === false) {
+            if (itemInputClone._full === true && itemCached._full === false) {
                 itemCached = itemInputClone;
             } else {
                 itemCached = Object.assign({}, itemCached, itemInputClone);
             }
-            itemCached._serv_updatedByMe = item._serv_updatedByMe;
-            itemCached._cacheOutdated = !!item._cacheOutdated;
-            itemCached['id'] = parseInt(itemCached['id'], 10);
 
+            itemCached._cacheUpdatedAt = new Date().getTime();
+            itemCached._serv_updatedByMe = item._serv_updatedByMe;
+            itemCached._cacheOutdated = Boolean(item._cacheOutdated);
             ASQ.deleteById(arrayCache, itemCached.id);
             arrayCache.push(itemCached);
             return itemCached; // as item of cache array
-        }
-        item._cacheUpdatedAt = new Date().getTime();
-        item._serv_timestamp = retrievalTimestamp;
-        item._cacheOutdated = false;
-        const itemOfCacheArray = itemInputClone;
-        arrayCache.push(itemOfCacheArray);
+      }
 
-        return itemOfCacheArray;
+      // Item is new
+      itemInputClone._cacheUpdatedAt = new Date().getTime();
+      itemInputClone._serv_timestamp = retrievalTimestamp;
+      itemInputClone._cacheOutdated = false;
+      arrayCache.push(itemInputClone);
+
+      return itemInputClone;
    }
 
 
@@ -136,7 +220,13 @@ export class ApiDataCacheService <T> {
       return cachedItems;
   }
 
-
+  /**
+   * Search instances locally.
+   * @param {string} qsearch - String to search in the object fields.
+   * @param {number[]} scopeIds - Limiting search to specific collection of ids.
+   * @return The cached items that matches the search input.
+   * 
+   */
   searchCache(qsearch: string, scopeIds: number[] = []) {
     let objects: any[];
     if (scopeIds.length) {
@@ -156,11 +246,14 @@ export class ApiDataCacheService <T> {
 // Methods to Cache Request Responses
 // --------------------------------------------------------------------------
 
-  resetListResponseCache() {
+   /**
+   * Delete short-lived server response cache. This data cache is only used for listing, common in pagination operations.
+   */
+  public resetListResponseCache() {
     this.cachedResponses = {};
   }
 
-  public deleteOld(cache, age: number) {
+  private deleteOld(cache, age: number) {
       const now = new Date();
       for (const key in cache) {
           if ((now.getTime() - cache[key]['timestamp'].getTime()) / 1000 > age) {
@@ -169,7 +262,8 @@ export class ApiDataCacheService <T> {
       }
     }
 
-    private cacheResponse(url, postData, response, cache) {
+  private cacheResponse(url, postData, response, cache) {
+    if (this.disabledCache) {return cache};  
     const key = hashCode(url + JSON.stringify(postData));
     cache[key] = { response, timestamp: new Date() };
 
@@ -189,12 +283,16 @@ export class ApiDataCacheService <T> {
   private cloneObj(obj:any): any{
 
     function simpleRecursiveClone(obj) {
+      if ( obj.constructor === Array) {
+        return  obj.map( v =>  (v && v.constructor === Object) ? simpleRecursiveClone(v) : v);
+      }
+
       return Object.keys(obj).reduce((v, d) => Object.assign(v, {
-        [d]: (obj[d].constructor === Object) ? simpleRecursiveClone(obj[d]) : obj[d]
+        [d]: (obj[d] && obj[d].constructor === Object) ? simpleRecursiveClone(obj[d]) : obj[d]
       }), {});
     }
 
-    switch (this.preventListMutation) {
+    switch (this.opt.mutationPreventionStrategy) {
       case 'simpleRecursiveClone':
         return simpleRecursiveClone(obj);
       case 'cloneDeep':
@@ -242,7 +340,7 @@ export class ApiDataCacheService <T> {
     list(qsearch = '', pageRequest: DataPageRequest | null = null,  alternativeUrl='' ) {
         const url = this.get_list_url(qsearch, pageRequest, alternativeUrl);
 
-        const cachedResponse = this.getCachedResponse(url, {}, this.cachedResponses, this.maxCachedListAge);
+        const cachedResponse = this.getCachedResponse(url, {}, this.cachedResponses, this.opt.serverResponseTTL);
         if (cachedResponse) {
           if (isObservable(cachedResponse)) {
             return (cachedResponse as Subject<any>);
@@ -253,15 +351,15 @@ export class ApiDataCacheService <T> {
 
         return this.fetch({
             method: 'get',
-            url: this.url,
+            url: url,
         }).pipe(
             tap((rv: DataListResponse<T> | T[]) => this.cacheResponse(url, {}, rv, this.cachedResponses))
         );
     }
 
 /**
- * This method constucts a `POST` request that retrive a list of selected entity instances.
- * The selecting parameters are passed in the request body through `options`. These parameters must be interpreted
+ * This method constucts a `POST` request that retrives a list of selected entity instances.
+ * The selecting parameters are passed in the request body through the parameter `options`. These parameters must be interpreted
  * by the backend.
  * In principle this method should be used in list views where the server would return non-nested or partial objects. 
  *
@@ -294,9 +392,10 @@ export class ApiDataCacheService <T> {
  * 
  *
  */
-  advancedList(qsearch = '', pageRequest: DataPageRequest | null = null,   options: AdvancedListOptions=null, alternativeUrl=''): Subject<DataListResponse <T>> {
-        let advancedListEndPoint = alternativeUrl? alternativeUrl: this.advancedListEndpoint;
-        let _opt = options ?  options : new AdvancedListOptions();
+  advancedList(qsearch = '', pageRequest: DataPageRequest | null = null,   options: null | Partial<AdvancedListOptions>=null, alternativeUrl=''): Subject<DataListResponse <T>> {
+        let advancedListEndPoint = alternativeUrl? alternativeUrl: this.opt.advancedListEndpoint;
+        const defaultOptions = new AdvancedListOptions();
+        let _opt = options ?  {...defaultOptions, ...options} : defaultOptions;
 
         
         const url = this.get_list_url(qsearch, pageRequest, advancedListEndPoint);
@@ -331,8 +430,8 @@ export class ApiDataCacheService <T> {
         }
         }
 
-        const postData = {cachedIds: cachedItemsIds, ...options};
-        const cachedResponse = this.getCachedResponse(url, postData, this.cachedResponses, this.maxCachedListAge);
+        const postData = {cachedIds: cachedItemsIds, ..._opt};
+        const cachedResponse = this.getCachedResponse(url, postData, this.cachedResponses, this.opt.serverResponseTTL);
         if (cachedResponse) {
         if (isObservable(cachedResponse)) {
             return (cachedResponse as Subject<any>);
@@ -369,39 +468,32 @@ export class ApiDataCacheService <T> {
         return responseSubject;
   }
 
-
-/**
- * Constructs a `GET` request that retrive then entity fully nested data by id. It uses the default url endpoint
- * appended by "/${id}/"
+  /**
+ * Constructs a `GET` request that retrieves the entity's fully nested data by its unique identifier (id) and saves it in the data cache, reducing the number of server accesses.
+ * The default URL endpoint is used, appended by "/${id}/".
  *
- * @param id Unique identifier of the entity instance.
- * @param reload  False: get data from local cache, if available. True: get data from server and  update local cache.
- * @param alternativeUrl  Alternative endpoint URL.
+ * If the property `setFullRecordOnGet` is set to `true`, the retrieved record will automatically receive an extra field `_full=true`, indicating that the record contains all fields and required nested fields.
+ * This method will always request the server if the `_full` field of the record is set to `false`.
  *
+ * @param id The unique identifier of the entity instance.
+ * @param reload `false`: Get data from the local cache if available. `true`: Get data from the server and update the local cache.
+ * @param alternativeUrl An alternative endpoint URL.
  *
- * @return An `Observable` of the response.
+ * @return An `Observable` of the service response.
  */
   get(id: string | number, reload: boolean = false, alternativeUrl = ''): Observable<T>  {
     let url: string;
       if (alternativeUrl === '') {
-          url = this.trailingSlash ? `${this.url}${id}/`: `${this.url}${id}`;
-
+          url = urlJoin(this.url, `${id}`);
+          url = this.opt.trailingSlash ? `${url}/`: `${url}`;
       } else {
           url = `${alternativeUrl}`;
       }
 
       let cached = ASQ.getObject(this.dataCached, { id });
       if (!cached) {cached = ASQ.getObject(this.dataCached, { _id: id }); }
-      if (cached && !reload && !cached._cacheOutdated && cached.full) {
-            const cachedCloned = {};
-            for (const key in cached) {
-                if (key === 'data') {
-                    cachedCloned['data'] = cached.data;
-                } else {
-                    cachedCloned[key] = lodash.cloneDeep(cached[key]);
-                }
-            }
-
+      if (cached && !reload && !cached._cacheOutdated && cached._full) {
+            const cachedCloned =lodash.cloneDeep(cached);
             return of(cachedCloned as T);
       }
 
@@ -409,23 +501,23 @@ export class ApiDataCacheService <T> {
           url: url,
           method: 'get',
       })
-          .pipe(
-              map((response: T) => {
-                  if (response['id'].toString() !== id.toString()) { response['_id'] = id; }
-                  const r = this.updateItemMetaCache(response, new Date().getTime());
-                  const cachedCloned = lodash.cloneDeep(r);
-                  return cachedCloned;
-              })
-          );
+      .pipe(
+          map((response: T) => {
+            if (this.setFullRecordOnGet) { response['_full'] = true; }
+            const r = this.updateItemMetaCache(response, new Date().getTime());
+            const cachedCloned = lodash.cloneDeep(r);
+            return cachedCloned;
+          })
+      );
   }
 
 
 /**
- * Constructs a `POST` request to create an new entity instance in the server database.
+ * Constructs a `POST` request to create a new entity record in the server database.
  *
  * @param instance partial instance of object. 
  *
- * @return An `Observable` of the response. If the server response includes the data of the created instance, this data will be cached.
+ * @return An `Observable` of the response. If the server response includes the data of the created record, this data will be cached.
  */
   create(instance: Partial<T>): Observable<DataCreationResponse<T>> {
     return this.fetch({
@@ -456,14 +548,14 @@ export class ApiDataCacheService <T> {
   /**
  * Constructs a `PATCH` request to update an existing instance in the server database.
  *
- * @param instance partial instance of object. 
+ * @param instance partial record of object. 
  *
  * @return An `Observable` of the response. If the server response includes the data of the created instance, this data will update the cache.
  */
     edit(instance: Partial<T>, alternativeUrl = '') {
       let url: string;
       if (alternativeUrl === '') {
-          url = this.trailingSlash ? `${this.url}${instance['id']}/`: `${this.url}${instance['id']}`;
+          url = this.opt.trailingSlash ? `${this.url}${instance['id']}/`: `${this.url}${instance['id']}`;
       } else {
           url = `${alternativeUrl}`;
       }
@@ -493,11 +585,11 @@ export class ApiDataCacheService <T> {
 
 
   /**
- * Constructs a `PATCH` request to update an existing instance in the server database.
+ * Constructs a `PATCH` request to update an existing record in the server database.
  *
- * @param id Unique identifier of the entity instance.
+ * @param id Unique identifier of the entity record.
  *
- * @return An `Observable` of the response. If the server response includes the data of the created instance, this data will update the cache.
+ * @return An `Observable` of the response. If the server response includes the data of the created record, this data will update the cache.
  */
   delete(id: number | DataModel, alternativeUrl = '') {
       let ID = id;
@@ -505,7 +597,7 @@ export class ApiDataCacheService <T> {
           ID = id['id'];
       }
 
-      const url = this.trailingSlash ? `${this.url}${ID}/`: `${this.url}${ID}`;
+      const url = this.opt.trailingSlash ? `${this.url}${ID}/`: `${this.url}${ID}`;
 
       return this.fetch({
           url: url,
