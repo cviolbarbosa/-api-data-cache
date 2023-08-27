@@ -1,6 +1,6 @@
 {
   "name": "api-data-cache",
-  "version": "0.0.25",
+  "version": "0.1.3",
   "description": "Reduce data transfer and serialization time in servers by storing structured data locally.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,7 +32,7 @@
     "typescript": "^4.2"
   },
   "dependencies": {
-    "array-simple-query": "^0.1.0",
+    "array-simple-query": "^0.1.2",
     "lodash": "^4.17.21",
     "rxjs": "~7.X.X",
     "tslib": "^2.3.0",
